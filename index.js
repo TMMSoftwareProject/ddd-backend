@@ -1,11 +1,10 @@
-const serviceAccount = require('./service-account-key.json');
-const fs = require('fs')
-const express = require('express');
+const serviceAccount = require("./service-account-key.json");
+const fs = require("fs");
+const express = require("express");
 const app = express();
-const cors = require('cors');
-const dotenv = require('dotenv');
-const authMiddleware = require('./middlewares/auth');
-const firebase = require('./firebase')
+const cors = require("cors");
+const dotenv = require("dotenv");
+const firebase = require("./firebase");
 
 dotenv.config();
 
@@ -13,48 +12,33 @@ app.use(cors());
 
 const db = firebase.firestore();
 
-app.use('/', authMiddleware);
+app.get("/");
 
-app.get('/bin', (req, res) => {
+app.get("/modal/:id", function (req, res) {
   try {
-    binary = fs.readFileSync("./modals/example.bin");
-    res.send(binary)
+    let uid = req.params.id;
+    const filePath = "./modals/" + uid + ".usdz";
+    fs.exists(filePath, function (exists) {
+      if (exists) {
+        // Content-type is very interesting part that guarantee that
+        // Web browser will handle response in an appropriate manner.
+        res.writeHead(200, {
+          "Content-Type": "application/octet-stream",
+          "Content-Disposition": "attachment; filename=" + uid,
+        });
+        fs.createReadStream(filePath).pipe(res);
+        return;
+      }
+      res.writeHead(400, { "Content-Type": "text/plain" });
+      res.end("ERROR File does not exist");
+    });
   } catch (error) {
-    console.log("Got an error reading the modal.");
+    res.send(error, "Sorry! you cant see that.");
   }
 });
-
-app.post('/bin', (req, res) => {
-  binary = fs.readFileSync("./slick.bin");
-  console.log(binary);
-});
-
-
-app.get('/heroesfromfirebase', async (req, res) => {
-  const docRef = db.doc("dota/heroes");
-
-  await docRef.get().then((data) => {
-    if (data && data.exists) {
-      const responseData = data.data();
-      res.send(JSON.stringify(responseData, null, "  "));
-    }
-  })
-});
-
-app.post('/heroestofirebase', (req, res) => {
-  //firestore post
-  const jsonFile = fs.readFileSync('./heroes.json') //reads from local
-  const heroes = JSON.parse(jsonFile); //json parse 
-
-  return db.collection('dota').doc('heroes')
-    .set(heroes).then(() => {
-      res.send("Fresh Meat!!")
-    });
-})
-
 
 const PORT = process.env.PORT || 8000;
 
 app.listen(PORT, () => {
   console.log("listening on port ", PORT);
-})
+});
