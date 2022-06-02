@@ -1,20 +1,34 @@
-const admin = require('firebase-admin');
 const serviceAccount = require('./service-account-key.json');
 const fs = require('fs')
 const express = require('express');
 const app = express();
 const cors = require('cors');
 const dotenv = require('dotenv');
+const authMiddleware = require('./middlewares/auth');
+const firebase = require('./firebase')
 
 dotenv.config();
 
 app.use(cors());
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
+
+const db = firebase.firestore();
+
+app.use('/', authMiddleware);
+
+app.get('/bin', (req, res) => {
+  try {
+    binary = fs.readFileSync("./modals/example.bin");
+    res.send(binary)
+  } catch (error) {
+    console.log("Got an error reading the modal.");
+  }
 });
 
+app.post('/bin', (req, res) => {
+  binary = fs.readFileSync("./slick.bin");
+  console.log(binary);
+});
 
-const db = admin.firestore();
 
 app.get('/heroesfromfirebase', async (req, res) => {
   const docRef = db.doc("dota/heroes");
